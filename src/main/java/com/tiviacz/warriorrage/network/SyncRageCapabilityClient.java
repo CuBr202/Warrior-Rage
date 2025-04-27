@@ -16,10 +16,10 @@ public class SyncRageCapabilityClient {
     private final int remainingDuration;
     private final float damageNum;
     private final float hurtNum;
-    private final float multiplier;
+    private final int multiplier;
     private final int entityID;
 
-    public SyncRageCapabilityClient(int killCount, int remainingDuration, float damage, float hurt, float mult,
+    public SyncRageCapabilityClient(int killCount, int remainingDuration, float damage, float hurt, int mult,
             int entityID) {
         this.killCount = killCount;
         this.remainingDuration = remainingDuration;
@@ -34,10 +34,11 @@ public class SyncRageCapabilityClient {
         final int remainingDuration = buffer.readInt();
         final float damageNum = buffer.readFloat();
         final float hurtNum = buffer.readFloat();
-        final float multiplier = buffer.readFloat();
+        final int multiplier = buffer.readInt();
         final int entityID = buffer.readInt();
 
-        return new SyncRageCapabilityClient(killCount, remainingDuration, damageNum, hurtNum, multiplier, entityID);
+        return new SyncRageCapabilityClient(killCount, remainingDuration, damageNum, hurtNum, multiplier,
+                entityID);
     }
 
     public static void encode(final SyncRageCapabilityClient message, final FriendlyByteBuf buffer) {
@@ -45,7 +46,7 @@ public class SyncRageCapabilityClient {
         buffer.writeInt(message.remainingDuration);
         buffer.writeFloat(message.damageNum);
         buffer.writeFloat(message.hurtNum);
-        buffer.writeFloat(message.multiplier);
+        buffer.writeInt(message.multiplier);
         buffer.writeInt(message.entityID);
     }
 

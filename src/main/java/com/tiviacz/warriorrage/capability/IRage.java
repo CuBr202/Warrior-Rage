@@ -34,9 +34,15 @@ public interface IRage {
 
     void setKillCount(int count);
 
-    void setMultiplier(float s);
+    void addMultiplier(int s);
 
-    float getMultiplier();
+    void setMultiplier(int s);
+
+    int getMultiplier();
+
+    float getCapMultiplier(int multiplier);
+
+    float getDmgMultiplier(int multiplier);
 
     void setRageDuration(int time);
 

@@ -31,6 +31,7 @@ public class WarriorRageConfig {
 
                 public final ForgeConfigSpec.ConfigValue<List<? extends String>> advancementMilestones;
                 public final ForgeConfigSpec.ConfigValue<List<? extends Double>> penaltyAfterAdvancements;
+                public final ForgeConfigSpec.ConfigValue<List<? extends Double>> capMultiplier;
 
                 Server(final ForgeConfigSpec.Builder builder) {
                         builder.comment("Server config settings")
@@ -102,11 +103,16 @@ public class WarriorRageConfig {
 
                         penaltyAfterAdvancements = builder
                                         .comment("After achieving some advancements, the damage dealt that can be count as one kill will grow. It will be multiplied by the corresponding value according to the achievement.")
-                                        .define("penaltyAfterAdvancements", Arrays.asList(3.0));
+                                        .defineList("penaltyAfterAdvancements", Arrays.asList(3.0), entry -> true);
+
+                        capMultiplier = builder
+                                        .comment("After achieving some advancements, the max kill count for rage bonus damage will grow. It will be multiplied by the corresponding value according to the achievement.")
+                                        .defineList("capMultiplier", Arrays.asList(1.4), entry -> true);
 
                         advancementMilestones = builder
                                         .comment("The list of advancements for above. One advancement corresponds to one value.")
-                                        .define("advancementMilestones", Arrays.asList("minecraft:end/kill_dragon"));
+                                        .defineList("advancementMilestones", Arrays.asList("minecraft:end/kill_dragon"),
+                                                        entry -> true);
 
                         builder.pop();
                 }

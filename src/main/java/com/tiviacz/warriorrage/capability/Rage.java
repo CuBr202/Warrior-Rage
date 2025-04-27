@@ -10,9 +10,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.PacketDistributor;
-
-import java.text.AttributedCharacterIterator.Attribute;
-import java.util.UUID;
+import java.util.*;
 
 public class Rage implements IRage {
     private static final UUID RAGE = UUID.fromString("6e982d48-e5e6-11ec-8fea-0242ac120002");
@@ -26,7 +24,7 @@ public class Rage implements IRage {
     private int killCount = 0;
     private float hurtNum = 0;
     private float damageNum = 0;
-    private float multiplier = 1;
+    private int multiplier = 0;
     private final Player playerEntity;
 
     public Rage(final Player playerEntity) {
@@ -80,7 +78,7 @@ public class Rage implements IRage {
 
     @Override
     public void addKill(int count) {
-        if (this.killCount + count <= MAX_KILL_COUNT_CAP) {
+        if (this.killCount + count <= MAX_KILL_COUNT_CAP * getCapMultiplier(this.multiplier)) {
             this.killCount += count;
         }
         refreshRageDuration();
@@ -147,21 +145,60 @@ public class Rage implements IRage {
     }
 
     @Override
-    public void setMultiplier(float s) {
+    public void setMultiplier(int s) {
         this.multiplier = s;
     }
 
     @Override
-    public float getMultiplier() {
+    public int getMultiplier() {
         return this.multiplier;
+    }
+
+    @Override
+    public void addMultiplier(int s) {
+        this.multiplier += s;
+    }
+
+    @Override
+    public float getCapMultiplier(int multiplier) {
+        List<? extends Double> capList = WarriorRageConfig.SERVER.capMultiplier.get();
+        int len = capList.size();
+        float finalMult = 1;
+
+        for (int i = 0; i < len; i++) {
+            if (multiplier % 2 == 1) {
+                double t = capList.get(i);
+                finalMult = (float) t;
+            }
+            multiplier = multiplier / 2;
+        }
+
+        return finalMult;
+    }
+
+    @Override
+    public float getDmgMultiplier(int multiplier) {
+        List<? extends Double> valList = WarriorRageConfig.SERVER.penaltyAfterAdvancements.get();
+        int len = valList.size();
+        float finalMult = 1;
+
+        for (int i = 0; i < len; i++) {
+            if (multiplier % 2 == 1) {
+                double t = valList.get(i);
+                finalMult = (float) t;
+            }
+            multiplier = multiplier / 2;
+        }
+
+        return finalMult;
     }
 
     @Override
     public void setKillCount(int count) {
         this.hurtNum = 0;
         this.damageNum = 0;
-        if (count > MAX_KILL_COUNT_CAP) {
-            this.killCount = MAX_KILL_COUNT_CAP;
+        if (count > MAX_KILL_COUNT_CAP * getCapMultiplier(this.multiplier)) {
+            this.killCount = (int) Math.floor(MAX_KILL_COUNT_CAP * getCapMultiplier(this.multiplier));
             refreshRageDuration();
         } else if (count >= 0) {
             this.killCount = count;
@@ -205,7 +242,7 @@ public class Rage implements IRage {
         tag.putInt("Duration", this.rageDuration);
         tag.putFloat("damageNum", this.damageNum);
         tag.putFloat("hurtNum", this.hurtNum);
-        tag.putFloat("multiplier", this.multiplier);
+        tag.putInt("multiplier", this.multiplier);
         return tag;
     }
 
@@ -215,6 +252,6 @@ public class Rage implements IRage {
         this.rageDuration = compoundTag.getInt("Duration");
         this.damageNum = compoundTag.getFloat("damageNum");
         this.hurtNum = compoundTag.getFloat("hurtNum");
-        this.multiplier = compoundTag.getFloat("multiplier");
+        this.multiplier = compoundTag.getInt("multiplier");
     }
 }
