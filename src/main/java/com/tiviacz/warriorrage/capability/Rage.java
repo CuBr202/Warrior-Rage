@@ -11,154 +11,183 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.PacketDistributor;
 
+import java.text.AttributedCharacterIterator.Attribute;
 import java.util.UUID;
 
-public class Rage implements IRage
-{
+public class Rage implements IRage {
     private static final UUID RAGE = UUID.fromString("6e982d48-e5e6-11ec-8fea-0242ac120002");
-    public static final int DEFAULT_RAGE_DURATION = 20 * WarriorRageConfig.SERVER.rageDuration.get(); //20ticks*10 = 10 seconds
+    private static final UUID RAGE2 = UUID.fromString("6e982d48-e5e6-11ec-8fea-0242ac120003");
+
+    public static final int DEFAULT_RAGE_DURATION = 20 * WarriorRageConfig.SERVER.rageDuration.get(); // 20ticks*10 = 10
+                                                                                                      // seconds
     public static final int MAX_KILL_COUNT_CAP = WarriorRageConfig.SERVER.maxKillCountCap.get();
     public static final double BASE_MULTIPLIER = WarriorRageConfig.SERVER.bonusDamage.get();
     private int rageDuration = 0;
     private int killCount = 0;
+    private float hurtNum = 0;
+    private float damageNum = 0;
     private final Player playerEntity;
 
-    public Rage(final Player playerEntity)
-    {
+    public Rage(final Player playerEntity) {
         this.playerEntity = playerEntity;
     }
 
-    @Override
-    public void startRage()
-    {
-        //System.out.println("current kill count is" + this.killCount);
-        // System.out.println("remaining rage time" + getRemainingRageDuration());
-        // System.out.println("attack damage" + playerEntity.getAttribute(Attributes.ATTACK_DAMAGE).getValue());
-        AttributeModifier attackDamageModifier = new AttributeModifier(RAGE, "RageBonusDamage", calculateBonusDamage(this.killCount, BASE_MULTIPLIER), AttributeModifier.Operation.ADDITION);
-        AttributeInstance attribute = playerEntity.getAttribute(Attributes.ATTACK_DAMAGE);
-        if(attribute.getModifier(RAGE) != null)
-        {
-            if(attribute.getModifier(RAGE).getAmount() != attackDamageModifier.getAmount())
-            {
-                attribute.removeModifier(RAGE);
-                attribute.addPermanentModifier(attackDamageModifier);
+    public void addRageAttribute(UUID uuid, String pName, AttributeModifier.Operation pOperation,
+            net.minecraft.world.entity.ai.attributes.Attribute pAttribute) {
+        AttributeModifier attrModifier = new AttributeModifier(uuid, pName,
+                calculateBonusDamage(this.killCount, BASE_MULTIPLIER), pOperation);
+        AttributeInstance attribute = playerEntity.getAttribute(pAttribute);
+        if (attribute.getModifier(uuid) != null) {
+            if (attribute.getModifier(uuid).getAmount() != attrModifier.getAmount()) {
+                attribute.removeModifier(uuid);
+                attribute.addPermanentModifier(attrModifier);
             }
-        }
-        else {
-            attribute.addPermanentModifier(attackDamageModifier);
+        } else {
+            attribute.addPermanentModifier(attrModifier);
         }
     }
 
     @Override
-    public boolean canStartRage()
-    {
+    public void startRage() {
+        // System.out.println("current kill count is" + this.killCount);
+        // System.out.println("remaining rage time" + getRemainingRageDuration());
+        // System.out.println("attack damage" +
+        // playerEntity.getAttribute(Attributes.ATTACK_DAMAGE).getValue());
+        addRageAttribute(RAGE, "RageBonusDamage", AttributeModifier.Operation.MULTIPLY_TOTAL, Attributes.ATTACK_DAMAGE);
+        addRageAttribute(RAGE2, "RageBonusAttackSpeed", AttributeModifier.Operation.ADDITION, Attributes.ATTACK_SPEED);
+    }
+
+    @Override
+    public boolean canStartRage() {
         return this.killCount >= WarriorRageConfig.SERVER.minimalKillCount.get() && getRemainingRageDuration() > 0;
     }
-    public double calculateBonusDamage(int killCount, double multiplier)
-    {
-        return WarriorRageConfig.SERVER.killIntervalBetweenNextBonus.get() == 0 ? killCount * multiplier : (killCount / WarriorRageConfig.SERVER.killIntervalBetweenNextBonus.get()) * multiplier;
+
+    public double calculateBonusDamage(int killCount, double multiplier) {
+        return WarriorRageConfig.SERVER.killIntervalBetweenNextBonus.get() == 0 ? killCount * multiplier
+                : (killCount / WarriorRageConfig.SERVER.killIntervalBetweenNextBonus.get()) * multiplier;
     }
 
     @Override
-    public int getRemainingRageDuration()
-    {
+    public int getRemainingRageDuration() {
         return this.rageDuration;
     }
 
     @Override
-    public int getCurrentKillCount()
-    {
+    public int getCurrentKillCount() {
         return this.killCount;
     }
 
     @Override
-    public void addKill(int count)
-    {
-        if(this.killCount + count <= MAX_KILL_COUNT_CAP)
-        {
+    public void addKill(int count) {
+        if (this.killCount + count <= MAX_KILL_COUNT_CAP) {
             this.killCount += count;
         }
         refreshRageDuration();
     }
 
     @Override
-    public void decreaseRageDuration()
-    {
-        if(this.rageDuration > 0)
-        {
+    public void decreaseRageDuration() {
+        if (this.rageDuration > 0) {
             this.rageDuration -= 1;
         }
-        if(rageDuration == 0)
-        {
+        if (rageDuration == 0) {
             this.killCount = 0;
+            this.hurtNum = 0;
+            this.damageNum = 0;
         }
     }
 
     @Override
-    public void removeRageEffects()
-    {
-        if(playerEntity.getAttribute(Attributes.ATTACK_DAMAGE).getModifier(RAGE) != null)
-        {
+    public void removeRageEffects() {
+        if (playerEntity.getAttribute(Attributes.ATTACK_DAMAGE).getModifier(RAGE) != null) {
             playerEntity.getAttribute(Attributes.ATTACK_DAMAGE).removeModifier(RAGE);
         }
+
+        if (playerEntity.getAttribute(Attributes.ATTACK_SPEED).getModifier(RAGE2) != null) {
+            playerEntity.getAttribute(Attributes.ATTACK_SPEED).removeModifier(RAGE2);
+        }
     }
 
     @Override
-    public void refreshRageDuration()
-    {
-        if(this.rageDuration < DEFAULT_RAGE_DURATION)
-        {
+    public void refreshRageDuration() {
+        if (this.rageDuration < DEFAULT_RAGE_DURATION) {
             this.rageDuration = DEFAULT_RAGE_DURATION;
         }
     }
 
     @Override
-    public void setKillCount(int count)
-    {
-        if(count > MAX_KILL_COUNT_CAP)
-        {
+    public float getHurtAmount() {
+        return this.hurtNum;
+    }
+
+    @Override
+    public void addHurtAmount(float s) {
+        this.hurtNum += s;
+    }
+
+    @Override
+    public void setHurtAmount(float s) {
+        this.hurtNum = s;
+    }
+
+    @Override
+    public float getDamageAmount() {
+        return this.damageNum;
+    }
+
+    @Override
+    public void addDamageAmount(float s) {
+        this.damageNum += s;
+    }
+
+    @Override
+    public void setDamageAmount(float s) {
+        this.damageNum = s;
+    }
+
+    @Override
+    public void setKillCount(int count) {
+        this.hurtNum = 0;
+        this.damageNum = 0;
+        if (count > MAX_KILL_COUNT_CAP) {
             this.killCount = MAX_KILL_COUNT_CAP;
             refreshRageDuration();
-        }
-        else if(count >= 0)
-        {
+        } else if (count >= 0) {
             this.killCount = count;
-            if(count > 0)
-            {
+            if (count > 0) {
                 refreshRageDuration();
             }
         }
     }
 
     @Override
-    public void setRageDuration(int timeInTicks)
-    {
+    public void setRageDuration(int timeInTicks) {
         this.rageDuration = timeInTicks;
     }
 
     @Override
-    public void synchronise()
-    {
-        if(playerEntity != null && !playerEntity.level().isClientSide)
-        {
-            ServerPlayer serverPlayer = (ServerPlayer)playerEntity;
-            CapabilityUtils.getCapability(serverPlayer).ifPresent(cap -> WarriorRage.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new SyncRageCapabilityClient(this.killCount, this.rageDuration, serverPlayer.getId())));
+    public void synchronise() {
+        if (playerEntity != null && !playerEntity.level().isClientSide) {
+            ServerPlayer serverPlayer = (ServerPlayer) playerEntity;
+            CapabilityUtils.getCapability(serverPlayer)
+                    .ifPresent(cap -> WarriorRage.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer),
+                            new SyncRageCapabilityClient(this.killCount, this.rageDuration, serverPlayer.getId())));
         }
     }
 
     @Override
-    public void synchroniseToOthers(Player player)
-    {
-        if(player != null && !player.level().isClientSide)
-        {
-            ServerPlayer serverPlayer = (ServerPlayer)player;
-            //CapabilityUtils.getCapability(serverPlayer).ifPresent(cap -> WarriorRage.NETWORK.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> serverPlayer), new SyncBackpackCapabilityClient(this.wearable.save(new CompoundTag()), serverPlayer.getId())));
+    public void synchroniseToOthers(Player player) {
+        if (player != null && !player.level().isClientSide) {
+            ServerPlayer serverPlayer = (ServerPlayer) player;
+            // CapabilityUtils.getCapability(serverPlayer).ifPresent(cap ->
+            // WarriorRage.NETWORK.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()
+            // -> serverPlayer), new SyncBackpackCapabilityClient(this.wearable.save(new
+            // CompoundTag()), serverPlayer.getId())));
         }
     }
 
     @Override
-    public CompoundTag saveTag()
-    {
+    public CompoundTag saveTag() {
         CompoundTag tag = new CompoundTag();
         tag.putInt("KillCount", this.killCount);
         tag.putInt("Duration", this.rageDuration);
@@ -166,8 +195,7 @@ public class Rage implements IRage
     }
 
     @Override
-    public void loadTag(CompoundTag compoundTag)
-    {
+    public void loadTag(CompoundTag compoundTag) {
         this.killCount = compoundTag.getInt("KillCount");
         this.rageDuration = compoundTag.getInt("Duration");
     }
