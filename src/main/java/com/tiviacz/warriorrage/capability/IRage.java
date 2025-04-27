@@ -34,6 +34,10 @@ public interface IRage {
 
     void setKillCount(int count);
 
+    void setMultiplier(float s);
+
+    float getMultiplier();
+
     void setRageDuration(int time);
 
     void synchronise();

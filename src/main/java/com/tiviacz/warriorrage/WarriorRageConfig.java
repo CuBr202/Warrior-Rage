@@ -5,6 +5,7 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import org.apache.commons.lang3.tuple.Pair;
+import java.util.*;
 
 @Mod.EventBusSubscriber(modid = WarriorRage.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class WarriorRageConfig {
@@ -16,16 +17,20 @@ public class WarriorRageConfig {
                 public final ForgeConfigSpec.DoubleValue bonusDamage;
                 public final ForgeConfigSpec.DoubleValue bonusAttackSpeed;
                 public final ForgeConfigSpec.BooleanValue enableFireDamage;
-
                 public final ForgeConfigSpec.BooleanValue enableFireParticle;
+
                 public final ForgeConfigSpec.BooleanValue enableRageWhenHurt;
                 public final ForgeConfigSpec.DoubleValue hurtAmountCountAsKill;
                 public final ForgeConfigSpec.IntValue maximalKillCountPerHurt;
                 public final ForgeConfigSpec.BooleanValue enableRageWhenDamage;
+                public final ForgeConfigSpec.BooleanValue enableOnlyMonster;
                 public final ForgeConfigSpec.DoubleValue damageAmountCountAsKill;
                 public final ForgeConfigSpec.IntValue maximalKillCountPerDamage;
 
                 public final ForgeConfigSpec.IntValue fireDamageRequiredKillCount;
+
+                public final ForgeConfigSpec.ConfigValue<List<? extends String>> advancementMilestones;
+                public final ForgeConfigSpec.ConfigValue<List<? extends Double>> penaltyAfterAdvancements;
 
                 Server(final ForgeConfigSpec.Builder builder) {
                         builder.comment("Server config settings")
@@ -79,6 +84,10 @@ public class WarriorRageConfig {
                                         .comment("Enable rage accumulation when dealing damage.")
                                         .define("enableRageWhenDamage", true);
 
+                        enableOnlyMonster = builder
+                                        .comment("Enable rage accumulation only when damage target is a monster.(Animals, iron golem,and dragon in Ice and Fire all don't count as monsters.)")
+                                        .define("enableOnlyMonster", true);
+
                         damageAmountCountAsKill = builder
                                         .comment("How many damage dealt can count as one kill.")
                                         .defineInRange("damageAmountCountAsKill", 100.0, 1.0, 10000.0);
@@ -90,6 +99,14 @@ public class WarriorRageConfig {
                         fireDamageRequiredKillCount = builder
                                         .comment("Required minimal kill count for fire damage to apply")
                                         .defineInRange("fireDamageRequiredKillCount", 20, 0, 1000);
+
+                        penaltyAfterAdvancements = builder
+                                        .comment("After achieving some advancements, the damage dealt that can be count as one kill will grow. It will be multiplied by the corresponding value according to the achievement.")
+                                        .define("penaltyAfterAdvancements", Arrays.asList(3.0));
+
+                        advancementMilestones = builder
+                                        .comment("The list of advancements for above. One advancement corresponds to one value.")
+                                        .define("advancementMilestones", Arrays.asList("minecraft:end/kill_dragon"));
 
                         builder.pop();
                 }

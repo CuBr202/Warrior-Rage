@@ -2,6 +2,7 @@ package com.tiviacz.warriorrage;
 
 import java.io.ObjectInputFilter.Config;
 import java.lang.Math;
+import java.util.*;
 
 import com.tiviacz.warriorrage.capability.CapabilityUtils;
 import com.tiviacz.warriorrage.capability.IRage;
@@ -9,8 +10,10 @@ import com.tiviacz.warriorrage.capability.Rage;
 import com.tiviacz.warriorrage.capability.RageCapability;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
@@ -21,8 +24,10 @@ import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.player.AdvancementEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.AdvancementEvent.AdvancementEarnEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -132,11 +137,23 @@ public class ForgeEventHandler {
                 && WarriorRageConfig.SERVER.enableRageWhenDamage.get()) {
             LazyOptional<IRage> rage = CapabilityUtils.getCapability(player);
 
-            if (rage.isPresent() && event.getEntity() instanceof Monster) {
-                float total = rage.resolve().get().getDamageAmount() + event.getAmount();
-                double value = WarriorRageConfig.SERVER.damageAmountCountAsKill.get();
+            if (rage.isPresent()
+                    && !(WarriorRageConfig.SERVER.enableOnlyMonster.get() && !(event.getEntity() instanceof Monster))) {
+                float total = rage.resolve().get().getDamageAmount()
+                        + Math.min(event.getAmount(), event.getEntity().getHealth());
+                float mult = rage.resolve().get().getMultiplier();
+
+                if (mult == 0) {
+                    mult = 1;
+                    rage.ifPresent(r -> r.setMultiplier(1));
+                }
+
+                double value = WarriorRageConfig.SERVER.damageAmountCountAsKill.get()
+                        * mult;
                 int cap = WarriorRageConfig.SERVER.maximalKillCountPerDamage.get();
-                LOGGER.debug(String.format("Mob is Hurt with total: %f, addkill: %f", total, total / value));
+                LOGGER.debug(String.format("Mob is Hurt with total: %f, value: %f, multiplier: %f, addkill: %f", total,
+                        WarriorRageConfig.SERVER.damageAmountCountAsKill.get(), mult,
+                        total / value));
 
                 rage.ifPresent(r -> r.setDamageAmount(total % (float) value));
                 rage.ifPresent(r -> r.addKill(Math.min(cap, (int) (total / value))));
@@ -150,7 +167,7 @@ public class ForgeEventHandler {
                 float total = rage.resolve().get().getHurtAmount() + event.getAmount();
                 double value = WarriorRageConfig.SERVER.hurtAmountCountAsKill.get();
                 int cap = WarriorRageConfig.SERVER.maximalKillCountPerHurt.get();
-                LOGGER.debug(String.format("Mob is Hurt with total: %f, addkill: %f", total, total / value));
+                LOGGER.debug(String.format("Player is Hurt with total: %f, addkill: %f", total, total / value));
 
                 rage.ifPresent(r -> r.setHurtAmount(total % (float) value));
                 rage.ifPresent(r -> r.addKill(Math.min(cap, (int) (total / value))));
@@ -158,6 +175,27 @@ public class ForgeEventHandler {
                 CapabilityUtils.synchronise(player);
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onAdvancement(final AdvancementEarnEvent event) {
+        ServerPlayer player = (ServerPlayer) event.getEntity();
+        String advancementId = event.getAdvancement().getId().toString();
+        List<? extends String> advList = WarriorRageConfig.SERVER.advancementMilestones.get();
+        List<? extends Double> valList = WarriorRageConfig.SERVER.penaltyAfterAdvancements.get();
+        // int len = Math.min(advList.size(),valList.size());
+
+        if (advList.contains(advancementId)) {
+            double mult = valList.get(advList.indexOf(advancementId));
+
+            LazyOptional<IRage> rage = CapabilityUtils.getCapability(player);
+
+            rage.ifPresent(r -> r.setMultiplier((float) mult));
+
+            CapabilityUtils.synchronise(player);
+
+        }
+
     }
 
     @SubscribeEvent

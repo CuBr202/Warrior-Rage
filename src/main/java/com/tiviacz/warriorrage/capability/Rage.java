@@ -26,6 +26,7 @@ public class Rage implements IRage {
     private int killCount = 0;
     private float hurtNum = 0;
     private float damageNum = 0;
+    private float multiplier = 1;
     private final Player playerEntity;
 
     public Rage(final Player playerEntity) {
@@ -146,6 +147,16 @@ public class Rage implements IRage {
     }
 
     @Override
+    public void setMultiplier(float s) {
+        this.multiplier = s;
+    }
+
+    @Override
+    public float getMultiplier() {
+        return this.multiplier;
+    }
+
+    @Override
     public void setKillCount(int count) {
         this.hurtNum = 0;
         this.damageNum = 0;
@@ -171,7 +182,8 @@ public class Rage implements IRage {
             ServerPlayer serverPlayer = (ServerPlayer) playerEntity;
             CapabilityUtils.getCapability(serverPlayer)
                     .ifPresent(cap -> WarriorRage.NETWORK.send(PacketDistributor.PLAYER.with(() -> serverPlayer),
-                            new SyncRageCapabilityClient(this.killCount, this.rageDuration, serverPlayer.getId())));
+                            new SyncRageCapabilityClient(this.killCount, this.rageDuration, this.damageNum,
+                                    this.hurtNum, this.multiplier, serverPlayer.getId())));
         }
     }
 
@@ -191,6 +203,9 @@ public class Rage implements IRage {
         CompoundTag tag = new CompoundTag();
         tag.putInt("KillCount", this.killCount);
         tag.putInt("Duration", this.rageDuration);
+        tag.putFloat("damageNum", this.damageNum);
+        tag.putFloat("hurtNum", this.hurtNum);
+        tag.putFloat("multiplier", this.multiplier);
         return tag;
     }
 
@@ -198,5 +213,8 @@ public class Rage implements IRage {
     public void loadTag(CompoundTag compoundTag) {
         this.killCount = compoundTag.getInt("KillCount");
         this.rageDuration = compoundTag.getInt("Duration");
+        this.damageNum = compoundTag.getFloat("damageNum");
+        this.hurtNum = compoundTag.getFloat("hurtNum");
+        this.multiplier = compoundTag.getFloat("multiplier");
     }
 }
